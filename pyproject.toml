@@ -1,0 +1,20 @@
+[project]
+name = "jax-bandits"
+version = "0.1.0"
+description = "Playing around with Jax and multi-armed bandits."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=2.1.1",
+    "matplotlib>=3.9.2",
+    "jax>=0.4.33",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = [
+    "ipykernel>=6.29.5",
+]
