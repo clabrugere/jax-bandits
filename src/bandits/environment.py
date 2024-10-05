@@ -5,50 +5,55 @@ import jax
 import jax.numpy as jnp
 from jax import Array, jit
 
-# TODO: generate non stationary rewards
+SelectActionFn = Callable[[Array, NamedTuple], Array]
+UpdateStateFn = Callable[[NamedTuple, int, float], NamedTuple]
 
 
-# TODO: generate rewards within the method
-@partial(jit, static_argnames=("select_action_fn", "update_state_fn"))
+# TODO: update signature to allow passing a function generating rewards instead
+@partial(jit, static_argnames=("select_action_fn", "update_state_fn", "num_actions", "num_steps"))
 def simulate(
-    keys: Array,
-    true_rewards: Array,
-    select_action_fn: Callable,
-    update_state_fn: Callable,
+    key: Array,
+    select_action_fn: SelectActionFn,
+    update_state_fn: UpdateStateFn,
     init_state: NamedTuple,
+    num_actions: int,
+    num_steps: int,
 ) -> tuple[NamedTuple, Array]:
-    def step(carry: tuple[NamedTuple, Array], key: Array) -> tuple[NamedTuple, Array]:
-        bandit_state, true_rewards = carry
-        key_action, key_action_reward = jax.random.split(key)
+    def step(bandit_state: Array, xs: tuple[Array, Array]) -> tuple[NamedTuple, Array]:
+        key_action, rewards = xs
 
         action = select_action_fn(key_action, bandit_state)
-        reward = jax.random.bernoulli(key_action_reward, true_rewards[action]).astype(jnp.float32)
-        bandit_state = update_state_fn(bandit_state, action, reward)
+        bandit_state = update_state_fn(bandit_state, action, rewards[action])
 
-        return (bandit_state, true_rewards), reward
+        return bandit_state, rewards[action]
 
-    # key_rewards, key = jax.random.split(key)
-    # keys_scan = jax.random_split(key, num_steps)
-    # true_rewards = jax.random.uniform(key_rewards, num_actions)
+    key_rewards, key_probas, key = jax.random.split(key, 3)
+    keys_scan = jax.random.split(key, num_steps)
 
-    (state, _), rewards = jax.lax.scan(step, (init_state, true_rewards), keys)
+    reward_probas = jax.random.uniform(key_probas, (num_actions,))
+    true_rewards = jax.random.bernoulli(key_rewards, reward_probas, (num_steps, num_actions)).astype(jnp.float32)
+
+    state, rewards = jax.lax.scan(step, init_state, (keys_scan, true_rewards))
 
     return state, rewards
 
 
-# TODO: pass only one key and split it in the method
-@partial(jit, static_argnames=("select_action_fn", "update_state_fn"))
+@partial(jit, static_argnames=("select_action_fn", "update_state_fn", "num_actions", "num_steps", "num_iter"))
 def simulate_multiple(
-    keys: Array,
-    true_rewards: Array,
-    select_action_fn: Callable,
-    update_state_fn: Callable,
+    key: Array,
+    select_action_fn: SelectActionFn,
+    update_state_fn: UpdateStateFn,
     init_state: NamedTuple,
+    num_actions: int,
+    num_steps: int,
+    num_iter: int,
 ) -> tuple[NamedTuple, Array]:
-    return jax.vmap(simulate, in_axes=(0, None, None, None, None))(
+    keys = jax.random.split(key, num_iter)
+    return jax.vmap(simulate, in_axes=(0, None, None, None, None, None))(
         keys,
-        true_rewards,
         select_action_fn,
         update_state_fn,
         init_state,
+        num_actions,
+        num_steps,
     )
