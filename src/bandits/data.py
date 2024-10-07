@@ -45,18 +45,24 @@ def bezier_interpolation(control_points: Array, t: Array) -> Array:
 
 
 @partial(jit, static_argnames=("num_steps", "num_actions"))
-def stationary_rewards(key: Array, num_steps: int, num_actions: int) -> Array:
+def stationary_rewards(key: Array, num_steps: int, num_actions: int) -> tuple[Array, Array]:
     """Generates a random array of shape (num_steps, num_actions) or stationary rewards by sampling a probability vector
     from the uniform distribution and using it to sample num_steps rewards from the Bernoulli distribution.
     """
     key_p, key_r = jax.random.split(key, 2)
     p = jax.random.uniform(key_p, (num_actions,))
+    rewards = jax.random.bernoulli(key_r, p, (num_steps, num_actions)).astype(jnp.float32)
 
-    return jax.random.bernoulli(key_r, p, (num_steps, num_actions)).astype(jnp.float32)
+    return rewards, p
 
 
 @partial(jit, static_argnames=("num_steps", "num_actions", "interpolation_fn"))
-def biregime_rewards(key: Array, num_steps: int, num_actions: int, interpolation_fn: InterpolationFn) -> Array:
+def biregime_rewards(
+    key: Array,
+    num_steps: int,
+    num_actions: int,
+    interpolation_fn: InterpolationFn,
+) -> tuple[Array, Array]:
     """Generates a random array of shape (num_steps, num_actions) of non stationary rewards with 2 regimes.
     The method samples two probability vectors p_init and p_final from the uniform distribution and creates num_steps-2
     probability vectors in between by interpolating using interpolation_fn. Finally it samples num_steps rewards from
@@ -69,14 +75,13 @@ def biregime_rewards(key: Array, num_steps: int, num_actions: int, interpolation
 
     t = jnp.expand_dims(jnp.linspace(0.0, 1.0, num_steps), -1)
     p = interpolation_fn(p_init, p_final, t)
-
     rewards = jax.random.bernoulli(key_r, p, (num_steps, num_actions)).astype(jnp.float32)
 
     return rewards, p
 
 
 @partial(jit, static_argnames=("num_steps", "num_actions", "num_regimes"))
-def multiregime_rewards(key: Array, num_steps: int, num_actions: int, num_regimes: int) -> Array:
+def multiregime_rewards(key: Array, num_steps: int, num_actions: int, num_regimes: int) -> tuple[Array, Array]:
     """Generates a random array of shape (num_steps, num_actions) of non stationary rewards with num_regimes regimes.
     The method samples num_regimes probability vectors [p0...pr] and creates num_steps - num_regimes probability vectors
     in between by using Bézier interpolation. It then samples num_steps rewards from the Bernoulli distribution.
@@ -86,7 +91,6 @@ def multiregime_rewards(key: Array, num_steps: int, num_actions: int, num_regime
     control_points = jax.random.uniform(key_p, (num_regimes, num_actions))
     t = jnp.linspace(0.0, 1.0, num_steps)
     p = bezier_interpolation(control_points, t)
-
     rewards = jax.random.bernoulli(key_r, p, (num_steps, num_actions)).astype(jnp.float32)
 
     return rewards, p
