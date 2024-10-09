@@ -7,6 +7,7 @@ from jax import Array, jit
 
 class EpsilonGreedyState(NamedTuple):
     epsilon: float
+    epsilon_decay: float
     values: Array
     counts: Array
 
@@ -33,4 +34,4 @@ def update_state(state: EpsilonGreedyState, action: int, reward: float) -> Epsil
     counts = counts.at[action].set(counts_update)
     values = values.at[action].set(values_update)
 
-    return EpsilonGreedyState(state.epsilon, values, counts)
+    return EpsilonGreedyState(state.epsilon * state.epsilon_decay, state.epsilon_decay, values, counts)

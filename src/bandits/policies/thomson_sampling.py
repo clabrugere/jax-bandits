@@ -8,6 +8,7 @@ from jax import Array, jit
 class ThomsonSamplingState(NamedTuple):
     alphas: Array
     betas: Array
+    discount: float
 
 
 @jit
@@ -19,12 +20,13 @@ def select_action(key: Array, state: ThomsonSamplingState) -> Array:
 
 @jit
 def update_state(state: ThomsonSamplingState, action: int, reward: float) -> ThomsonSamplingState:
-    alpha, beta = state.alphas, state.betas
+    alphas = state.alphas * state.discount
+    betas = state.betas * state.discount
 
-    alpha_update = alpha[action] + reward
-    beta_update = beta[action] + (1.0 - reward)
+    alphas_update = alphas[action] + reward
+    betas_update = betas[action] + (1.0 - reward)
 
-    alpha = alpha.at[action].set(alpha_update)
-    beta = beta.at[action].set(beta_update)
+    alphas = alphas.at[action].set(alphas_update)
+    betas = betas.at[action].set(betas_update)
 
-    return ThomsonSamplingState(alpha, beta)
+    return ThomsonSamplingState(alphas, betas, state.discount)
