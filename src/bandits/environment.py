@@ -9,6 +9,12 @@ UpdateStateFn = Callable[[NamedTuple, int, float], NamedTuple]
 RewardsGenerationFn = Callable[..., tuple[Array, Array]]
 
 
+class Policy(NamedTuple):
+    select_action_fn: SelectActionFn
+    update_state_fn: UpdateStateFn
+    init_state: NamedTuple
+
+
 @partial(
     jit,
     static_argnames=(
