@@ -7,10 +7,10 @@ from jax import Array, jit
 
 class UCBState(NamedTuple):
     c: float
-    discount: float
     steps: int
     values: Array
     counts: Array
+    discount: float = 1.0
 
 
 @jit
@@ -42,4 +42,4 @@ def update_state(state: UCBState, action: int, reward: float) -> UCBState:
     counts = counts.at[action].set(counts_update)
     values = values.at[action].set(values_update)
 
-    return UCBState(state.c, state.discount, state.steps + 1, values, counts)
+    return UCBState(state.c, state.steps + 1, values, counts, state.discount)

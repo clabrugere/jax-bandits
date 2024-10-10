@@ -8,7 +8,7 @@ from jax import Array, jit
 class ThomsonSamplingState(NamedTuple):
     alphas: Array
     betas: Array
-    discount: float
+    discount: float = 1.0
 
 
 @jit

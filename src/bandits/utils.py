@@ -3,13 +3,15 @@ import matplotlib.pyplot as plt
 from jax import Array
 
 
-def plot_rewards(rewards: list[Array], names: list[str]) -> None:
-    num_steps = rewards[0].shape[1]
+def plot_rewards(rewards: Array, names: list[str]) -> None:
+    num_policies, _, _, num_steps = rewards.shape
+
     step_inds = jnp.arange(1, num_steps + 1)
+    rewards = rewards.mean(axis=(1, 2)).cumsum(axis=1) / step_inds
 
     _, ax = plt.subplots()
-    for reward, name in zip(rewards, names):
-        ax.plot(jnp.cumsum(jnp.mean(reward, axis=0)) / step_inds, label=name)
+    for i in range(num_policies):
+        ax.plot(rewards[i, :], label=names[i])
 
     ax.set_xlabel("step")
     ax.set_ylabel("average reward")

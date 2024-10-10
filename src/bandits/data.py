@@ -7,6 +7,7 @@ from jax import Array, jit
 from jax.scipy.special import gammaln
 
 InterpolationFn = Callable[[Array, Array, Array], Array]
+DatasetGenerationFn = Callable[..., tuple[Array, Array]]
 
 
 @jit
@@ -94,3 +95,35 @@ def multiregime_rewards(key: Array, num_steps: int, num_actions: int, num_regime
     rewards = jax.random.bernoulli(key_r, p, (num_steps, num_actions)).astype(jnp.float32)
 
     return rewards, p
+
+
+@partial(
+    jit,
+    static_argnames=(
+        "dataset_generator_fn",
+        "dataset_generator_fn_args",
+        "num_steps",
+        "num_actions",
+        "num_datasets",
+    ),
+)
+def batched_rewards(
+    key: Array,
+    dataset_generator_fn: DatasetGenerationFn,
+    dataset_generator_fn_args: tuple,
+    num_steps: int,
+    num_actions: int,
+    num_datasets: int,
+):
+    keys = jax.random.split(key, num_datasets)
+    num_dataset_generator_fn_args = len(dataset_generator_fn_args)
+
+    # a bit dirty but it works (we don't want to map over args, they are supposed to be constant here)
+    in_axes = tuple([0, None, None, *[None] * num_dataset_generator_fn_args])
+
+    return jax.vmap(dataset_generator_fn, in_axes)(
+        keys,
+        num_steps,
+        num_actions,
+        *dataset_generator_fn_args,
+    )
