@@ -10,7 +10,6 @@ class UCBState(NamedTuple):
     steps: int
     values: Array
     counts: Array
-    discount: float = 1.0
 
 
 @jit
@@ -33,8 +32,8 @@ def select_action(key: Array, state: UCBState) -> Array:
 
 @jit
 def update_state(state: UCBState, action: int, reward: float) -> UCBState:
-    counts = state.counts * state.discount
-    values = state.values * state.discount
+    counts = state.counts
+    values = state.values
 
     counts_update = counts[action] + 1
     values_update = values[action] + (reward - values[action]) / counts_update
@@ -42,4 +41,4 @@ def update_state(state: UCBState, action: int, reward: float) -> UCBState:
     counts = counts.at[action].set(counts_update)
     values = values.at[action].set(values_update)
 
-    return UCBState(state.c, state.steps + 1, values, counts, state.discount)
+    return UCBState(state.c, state.steps + 1, values, counts)
